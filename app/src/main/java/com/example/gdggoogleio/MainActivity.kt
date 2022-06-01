@@ -2,9 +2,13 @@ package com.example.gdggoogleio
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,11 +17,27 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.os.LocaleListCompat
+import com.bumptech.glide.Glide
 import com.example.gdggoogleio.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     lateinit var binding: ActivityMainBinding
+
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission())
+        {
+            createNotificationChannel()
+            sendNotification()
+        }
+
+    private val photoPickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (it.resultCode == Activity.RESULT_OK) {
+                val currentUri: Uri = it.data?.data!!
+                Glide.with(binding.ivProfile).load(currentUri).into(binding.ivProfile)
+            }
+        }
 
     @SuppressLint("UnsafeOptInUsageError")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,8 +45,6 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(LayoutInflater.from(this))
         setContentView(binding.root)
-
-
 
 
         //Per app language change programatically
@@ -46,13 +64,27 @@ class MainActivity : AppCompatActivity() {
         //Downgradable permission
         binding.btnRevokeNotificationPermission.setOnClickListener {
             revokeSelfPermissionOnKill(Manifest.permission.POST_NOTIFICATIONS)
-            revokeSelfPermissionsOnKill(arrayListOf(Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.POST_NOTIFICATIONS))
+            revokeSelfPermissionsOnKill(
+                arrayListOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            )
             Toast.makeText(this, "Permission revoked", Toast.LENGTH_SHORT).show()
             finish()
         }
 
         binding.btnRestartApp.setOnClickListener {
             recreate()
+        }
+
+        binding.ivProfile.setOnClickListener {
+            val pickerIntent = Intent(MediaStore.ACTION_PICK_IMAGES)
+            //pickerIntent.type = "video/*"
+            pickerIntent.type = "image/*"
+            //pickerIntent.putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, 5) //you can set max limit
+            //MediaStore.getPickImagesMaxLimit() // to get max limit
+            photoPickerLauncher.launch(pickerIntent)
         }
     }
 
@@ -64,12 +96,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val permissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission())
-        {
-            createNotificationChannel()
-            sendNotification()
-        }
 
     private fun sendNotification() {
         val notification = NotificationCompat.Builder(this, "123")
